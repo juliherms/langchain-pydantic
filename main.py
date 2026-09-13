@@ -14,10 +14,13 @@ import os
 load_dotenv()
 api_key = os.getenv("OPENAI_API_KEY")
 
+# Classe criada para descrever o formato de saida
+# com objetivo de ter um padrão
+# o uso do pydantic ajuda a formatar a saida e ter um maior controle
 class Destino(BaseModel):
     cidade:str = Field("A cidade recomendada para visitar")
-    motivo:str = Field("motivo pelo qual é interessante visitar a cidade")
-
+    motivo:str = Field("motivo pelo qual é interessante visitar essa cidade")
+# faz um parser da resposta
 parseador = JsonOutputParser(pydantic_object=Destino)
 
 
@@ -25,8 +28,10 @@ parseador = JsonOutputParser(pydantic_object=Destino)
 prompt_cidade = PromptTemplate(
     template="""
     Sugira uma cidade dado o meu interesse por {interesse}.
+    {formato_de_saide}
     """,
-    input_variables=["interesse"]
+    input_variables=["interesse"],
+    partial_variables={"formato_de_saide": parseador.get_format_instructions() }
 )
 
 # configura o modelo
@@ -37,7 +42,7 @@ modelo = ChatOpenAI(
 )
 
 # monta da cadeia baseada por prompt, modelo e saida
-cadeia = prompt_cidade | modelo | StrOutputParser()
+cadeia = prompt_cidade | modelo | parseador
 
 #Invoca o modelo
 resposta = cadeia.invoke(
